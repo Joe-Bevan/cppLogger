@@ -3,12 +3,13 @@
 #include <iostream>
 #include <Bitset>
 #include <string>
-
+#include <ctime>
+#include <vector>
 
 enum LogStates {			// Binary:
-	LOG_MSG =	1<<0,		// 001
-	LOG_WARN =	1<<1,		// 010
-	LOG_ERR =	1<<2		// 100
+	LOG_MSG = 1 << 0,		// 001
+	LOG_WARN = 1 << 1,		// 010
+	LOG_ERR = 1 << 2		// 100
 };
 
 class Logger {
@@ -18,37 +19,38 @@ public:
 	static void SetLogLevel(int state);
 
 	// Standard message functions (Green text)
-	static void LogMsg(const char* msg);
+	static void LogMsg(const char* msg, const char* from = "");
 	template<typename T>
-	static void LogMsg(const char* msg, T obj);
+	static void LogMsg(const char* msg, T obj, const char* from = "");
 	template<typename T>
-	static void LogMsg(const char* msg, T objs[], size_t size);
+	static void LogMsg(const char* msg, T objs[], size_t size, const char* from = "");
 
 	// Warning logging functions (Yellow text)
-	static void LogWarn(const char* warnMsg);
+	static void LogWarn(const char* warnMsg, const char* from = "");
 	template<typename T>
-	static void LogWarn(const char* warnMsg, T obj);
+	static void LogWarn(const char* warnMsg, T obj, const char* from = "");
 	template<typename T>
-	static void LogWarn(const char* warnMsg, T objs[], size_t size);
+	static void LogWarn(const char* warnMsg, T objs[], size_t size, const char* from = "");
 
 	// Error logging functions (Red text)
-	static void LogError(const char* errMsg);
+	static void LogError(const char* errMsg, const char* from = "");
 	template<typename T>
-	static void LogError(const char* errMsg, T obj);
+	static void LogError(const char* errMsg, T obj, const char* from = "");
 	template<typename T>
-	static void LogError(const char* errMsg, T objs[], size_t size);
-	
-	// Get raw string for custom output
-	static std::string GetLogMsg(const char* msg);
-	static std::string GetLogWarn(const char* warnMsg);
-	static std::string GetLogError(const char* errMsg);
+	static void LogError(const char* errMsg, T objs[], size_t size, const char* from = "");
+
+	static std::vector<std::string>& GetTextBuffer() { return mTextBuffer; }
 
 
 private:
 	static std::bitset<3> mSet; // Default value of 7 (111 in binary) to enable all logs to be displayed.
 	static HANDLE hConsole;
-	
+
 	static void ResetConsoleColor() { SetConsoleTextAttribute(hConsole, 15); }
+	static void PrintTime();
+	static void FormatFrom(const char* from = "");	// Formats the from to not include the abs path
+
+	static std::vector<std::string> mTextBuffer;	// Used for storing the text for ImGui
 
 	// Deleted as its a purely static class and thus not needed
 	Logger() = delete;
@@ -63,52 +65,96 @@ private:
 	=================================
 */
 template<typename T>
-void Logger::LogMsg(const char* msg, T obj) {
+void Logger::LogMsg(const char* msg, T obj, const char* from) {
 	if (mSet.test(0)) {
 		SetConsoleTextAttribute(hConsole, 10);
-		std::cout << "[MSG]: " << msg << " | " << "[OBJ]: " << obj << std::endl;
+		PrintTime();
+		FormatFrom(from);
+
+		mTextBuffer.emplace_back("[MSG]: ");
+		mTextBuffer.emplace_back(msg);
+		mTextBuffer.emplace_back(" | [OBJ]: ");
+		mTextBuffer.emplace_back(std::to_string(obj));
+		mTextBuffer.emplace_back("\n");
+		std::cout << "[MSG]: " << msg << " | [OBJ]: " << obj << std::endl;
 		ResetConsoleColor();
 	}
 }
 
 template<typename T>
-void Logger::LogMsg(const char* msg, T objs[], size_t size) {
+void Logger::LogMsg(const char* msg, T objs[], size_t size, const char* from) {
 	if (mSet.test(0)) {
 		SetConsoleTextAttribute(hConsole, 10);
+		PrintTime();
+		FormatFrom(from);
+
+		mTextBuffer.emplace_back("[MSG]: ");
+		mTextBuffer.emplace_back(msg);
+		mTextBuffer.emplace_back(" | [OBJ_ARR]: {");
 		std::cout << "[MSG]: " << msg << " | [OBJ_ARR]: {";
-		for (int i = 0; i < size; i++) {
-			if (i != size - 1)
+		for (size_t i = 0; i < size; i++) {
+			if (i != size - 1) {
+				mTextBuffer.emplace_back(std::to_string(objs[i]));
+				mTextBuffer.emplace_back(", ");
 				std::cout << objs[i] << ", ";
-			else
+
+			}
+			else {
+				mTextBuffer.emplace_back(std::to_string(objs[i]));
 				std::cout << objs[i];
+			}
 		}
+
+		mTextBuffer.emplace_back("}\n");
 		std::cout << '}' << std::endl;
 		ResetConsoleColor();
 	}
 }
-	
-	
+
+
 
 template<typename T>
-void Logger::LogWarn(const char* warnMsg, T obj) {
+void Logger::LogWarn(const char* warnMsg, T obj, const char* from) {
 	if (mSet.test(0)) {
-		SetConsoleTextAttribute(hConsole, 14); 
-		std::cout << "[WARN]: " << warnMsg << " | " << "[OBJ]: " << obj << std::endl;
+		SetConsoleTextAttribute(hConsole, 14);
+		PrintTime();
+		FormatFrom(from);
+
+		mTextBuffer.emplace_back("[WRN]: ");
+		mTextBuffer.emplace_back(warnMsg);
+		mTextBuffer.emplace_back(" | [OBJ]: ");
+		mTextBuffer.emplace_back(std::to_string(obj));
+		mTextBuffer.emplace_back("\n");
+		std::cout << "[WRN]: " << warnMsg << " | [OBJ]: " << obj << std::endl;
 		ResetConsoleColor();
 	}
 }
 
 template<typename T>
-void Logger::LogWarn(const char* warnMsg, T objs[], size_t size) {
+void Logger::LogWarn(const char* warnMsg, T objs[], size_t size, const char* from) {
 	if (mSet.test(0)) {
-		SetConsoleTextAttribute(hConsole, 14); 
-		std::cout << "[WARN]: " << warnMsg << " | [OBJ_ARR]: { ";
-		for (int i = 0; i < size; i++) {
-			if (i != size - 1)
+		SetConsoleTextAttribute(hConsole, 14);
+		PrintTime();
+		FormatFrom(from);
+
+		mTextBuffer.emplace_back("[WRN]: ");
+		mTextBuffer.emplace_back(warnMsg);
+		mTextBuffer.emplace_back(" | [OBJ_ARR]: {");
+		std::cout << "[WRN]: " << warnMsg << " | [OBJ_ARR]: { ";
+		for (size_t i = 0; i < size; i++) {
+			if (i != size - 1) {
+				mTextBuffer.emplace_back(std::to_string(objs[i]));
+				mTextBuffer.emplace_back(", ");
 				std::cout << objs[i] << ", ";
-			else
+
+			}
+			else {
+				mTextBuffer.emplace_back(std::to_string(objs[i]));
 				std::cout << objs[i];
+			}
 		}
+
+		mTextBuffer.emplace_back("}\n");
 		std::cout << " }" << std::endl;
 		ResetConsoleColor();
 	}
@@ -117,25 +163,47 @@ void Logger::LogWarn(const char* warnMsg, T objs[], size_t size) {
 
 
 template<typename T>
-void Logger::LogError(const char* errMsg, T obj) {
+void Logger::LogError(const char* errMsg, T obj, const char* from) {
 	if (mSet.test(0)) {
 		SetConsoleTextAttribute(hConsole, 12);
-		std::cout << "[ERR]: " << errMsg << " | " << "[OBJ]: " << obj << std::endl;
+		PrintTime();
+		FormatFrom(from);
+
+		mTextBuffer.emplace_back("[ERR]: ");
+		mTextBuffer.emplace_back(errMsg);
+		mTextBuffer.emplace_back(" | [OBJ]: ");
+		mTextBuffer.emplace_back(std::to_string(obj));
+		mTextBuffer.emplace_back("\n");
+		std::cout << "[ERR]: " << errMsg << " | [OBJ]: " << obj << std::endl;
 		ResetConsoleColor();
 	}
 }
 
 template<typename T>
-void Logger::LogError(const char* errMsg, T objs[], size_t size) {
+void Logger::LogError(const char* errMsg, T objs[], size_t size, const char* from) {
 	if (mSet.test(0)) {
 		SetConsoleTextAttribute(hConsole, 12);
+		PrintTime();
+		FormatFrom(from);
+
+		mTextBuffer.emplace_back("[ERR]: ");
+		mTextBuffer.emplace_back(errMsg);
+		mTextBuffer.emplace_back(" | [OBJ_ARR]: {");
 		std::cout << "[ERR]: " << errMsg << " | [OBJ_ARR]: { ";
-		for (int i = 0; i < size; i++) {
-			if (i != size - 1)
+		for (size_t i = 0; i < size; i++) {
+			if (i != size - 1) {
+				mTextBuffer.emplace_back(std::to_string(objs[i]));
+				mTextBuffer.emplace_back(", ");
 				std::cout << objs[i] << ", ";
-			else
+
+			}
+			else {
+				mTextBuffer.emplace_back(std::to_string(objs[i]));
 				std::cout << objs[i];
+			}
 		}
+
+		mTextBuffer.emplace_back("}\n");
 		std::cout << " }" << std::endl;
 		ResetConsoleColor();
 	}

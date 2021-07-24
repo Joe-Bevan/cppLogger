@@ -10,25 +10,18 @@ int main() {
 	// Simple logging messages
 	Logger::LogMsg("Hello msg");
 	Logger::LogWarn("Hello warn");
-	Logger::LogError("Hello error");
-	
-	std::cout << std::endl;
-	
-	// Return the string for a custom output system
-	std::cout << Logger::GetLogMsg("Hello msg"); 
-	std::cout << Logger::GetLogWarn("Hello warn"); 
-	std::cout << Logger::GetLogError("Hello error"); 
+	Logger::LogError("Hello error", __FILE__);
 	
 	std::cout << std::endl;
 	
 	// Logging an primitive type
 	int i = 7;
-	Logger::LogMsg("lvalue int", i);
-	Logger::LogMsg("rvalue int", 5);
+	Logger::LogMsg("lvalue int", i, __FILE__);
+	Logger::LogMsg("rvalue int", 5, __FILE__);
 	
 	// Logging arrays of primitives
 	int iarr[] = { 1,2,3 };
-	Logger::LogMsg("iarr", iarr, 3);
+	Logger::LogMsg("iarr", iarr, 3, __FILE__);
 
 
 
